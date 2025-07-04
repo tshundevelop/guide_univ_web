@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+<head>
+  	<meta charset="utf-8">
+  	<meta name="viewport" content="initial-scale=1, width=device-width">
+    <title>Document</title>
+  	
+    <!-- CSS -->
+  	<style>
+        /* ボディー */
+        body{
+            background-color: #f5f5fa;
+        }
+
+        /* トップメニュー */
+        .top{
+            background-color: white;
+            box-shadow: 0 3px 6px 0 rgba(50,50,50,.3);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+        }
+
+        /* トップメニューテキスト */
+        #title{
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 0px;
+            margin-top: 0px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        /* トップメニューセレクト */
+        nav{
+            border-bottom: 1px solid #ccc;
+        }
+        ul{
+            display: table;
+            margin: 0 auto;
+            padding: 0;
+            width: 80%;
+            text-align: center;
+        }
+        li{
+            display: table-cell;
+            min-width: 50px;
+            border-right: 1px solid #ccc;
+            font-weight: bold;
+        }
+        li:hover{
+            border-bottom: 5px solid #00B0F0;
+        }
+        li:first-child{
+            border-left: 1px solid #ccc;
+        }
+        a{
+            display: block;
+            width: 100%;
+            padding: 15px 0;
+            text-decoration: none;
+            color: #919191;
+        }
+        a:hover{
+            background-color:#F8E750;
+        }
+
+        /* メインコンテナ */
+        .container{
+            box-shadow: 0 5px 30px 0 hsla(0,0%,9%,.1);
+            background-color: white;
+            position: fixed;
+            top: 180px;
+            left: 100px;
+            right: 100px;
+            bottom: 15px;
+        }
+
+        /* 説明表示 */
+        #containerTop{
+            visibility: visible;
+        }
+
+        /* 棟の名前 */
+        #name {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            margin: 15px 10px 15px 10px;
+            font-size: 2.5em;
+        }
+        #name::before, #name::after {
+            content: '';
+            width: 150px;
+            height: 3px;
+            background-color: #e3bf00;
+        }
+        #name::before {
+            margin-right: 20px;
+        }
+        #name::after {
+            margin-left: 20px;
+        }
+
+        /* 詳細表示コンテナ */
+        .detailContainer{
+            display: flex;
+            border-top: 3px solid black;
+        }
+
+        /* セレクトコンテナ */
+        #containerSelect{
+            visibility: hidden;
+        }
+        /* それぞれのセレクト */
+        .select{
+            padding: 10px 15px;
+            font-size: 16px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            position: absolute;
+            outline: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: color 0.3s;
+            left: 5%;
+            right: 60%;
+            top: 150px;
+        }
+        /* 選択なしの時 */
+        .noSelect{
+            color: black;
+        }
+        /* 講義棟セレクト */
+        #inter{
+            background-image: linear-gradient(to right, #ff758c 0%, #ff7eb3 100%);
+            z-index: 1;
+        }
+        /* 芸術棟セレクト */
+        #art{
+            background-image: linear-gradient(to right, #6a11cb 0%, #2575fc 100%);
+            z-index: 1;
+        }
+        /* 情報棟セレクト */
+        #info{
+            background-image: linear-gradient(to right, #44a08d 0%, #093637 100%);
+            z-index: 1;
+        }
+
+        /* 現在地・目的地表示コンテナ */
+        .textContainer{
+            position: absolute;
+            text-align: center;
+            left: 50%;
+            right: 5%;
+        }
+        /* 現在地 */
+        #startText{
+            margin: 30px;
+            font-size: 1.8em;
+            padding: 1rem 2rem;
+            border: 6px double #000;
+        }
+        /* 目的地 */
+        #goalText{
+            margin: 30px;
+            font-size: 1.8em;
+            padding: 1rem 2rem;
+            border: 6px double #000;
+        }
+
+        /* 決定ボタン */
+        #decideButton{
+            justify-content: center;
+            align-items: center;
+            width: 170px;
+            padding: .9em 2em;
+            border: none;
+            border-bottom: solid 5px #881010;
+            border-radius: 25px;
+            background-color: #dd2626;
+            color: #fff;
+            font-weight: 600;
+            font-size: 1em;
+            transition: .5s ease;
+            margin-bottom: 20px;
+        }
+        /* 決定ボタンカーソル時 */
+        #decideButton:hover{
+            transform: translateY(3px);
+            border-bottom-width: 2px;
+        }
+
+        /* チェックボックス */
+        .switchArea {
+            line-height    : 60px;
+            letter-spacing : 0;
+            text-align     : center;
+            font-size      : 18px;
+            position       : relative;
+            margin         : auto;
+            width          : 160px;
+            background     : #fff;
+        }
+        .switchArea input[type="checkbox"] {
+            display        : none;
+        }
+        .switchArea label {
+            display        : block;
+            box-sizing     : border-box;
+            height         : 60px;
+            border         : 2px solid #78bd78;
+            border-radius  : 30px;
+        }
+        .switchArea input[type="checkbox"]:checked +label {
+            border-color   : #ffaf36;
+        }
+        .switchArea label span:after{
+            content        : "開始地点";
+            padding        : 0 0 0 36px;
+            color          : #78bd78;
+        }
+        .switchArea  input[type="checkbox"]:checked + label span:after{
+            content        : "目的地";
+            padding        : 0 36px 0 0;
+            color          : #ffaf36;
+        }
+        .switchArea #swImg {
+            position       : absolute;
+            width          : 52px;
+            height         : 52px;
+            background     : #78bd78;
+            top            : 4px;
+            left           : 4px;
+            border-radius  : 26px;
+            transition     : .2s;
+        }
+        .switchArea input[type="checkbox"]:checked ~ #swImg {
+            transform      : translateX(100px);
+            background     : #ffaf36;
+        }
+
+        .introduction {
+            text-align: center;
+            margin: 10%;
+        }
+    </style>
+  	
+</head>
+<body>
+    <div class="top">
+        <h1 id="title">広島市立大学施設ナビゲーションシステム</h1>
+        <nav>
+            <ul class="current">
+                <li><a class="menu begin" id="menuBegin">はじめに</a></li>
+                <li><a class="menu inter" id="menuInter">国際棟</a></li>
+                <li><a class="menu art" id="menuArt">芸術棟</a></li>
+                <li><a class="menu info" id="menuInfo">情報棟</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <div class="container" id="containerTop">
+        <div class="introduction">
+            <h1>
+                これは広島市立大学の施設をナビゲーションしてくれるシステムです。<br>
+                トップメニューから棟を選んで現在地と目的地を選択してください。<br>
+                現在地と目的地の選択の切り替えは、以下のようなトグルボタンからできます。<br>
+                <img src="image/startToggle.png" alt="direction" id="image">
+                <img src="image/goalToggle.png" alt="direction" id="image">
+            </h1>
+        </div>
+    </div>
+
+    <div class="container" id="containerSelect">
+        <p id="name"></p>
+        <div class="detailContainer">
+            <select class="select inter" id="inter" disabled="disabled">
+                <option class="noSelect">選択なし</option>
+            </select>
+            <select class="select art" id="art" disabled="disabled">
+                <option class="noSelect">選択なし</option>
+            </select>
+            <select class="select info" id="info" disabled="disabled">
+                <option class="noSelect">選択なし</option>
+            </select>
+            <div class="textContainer">
+                <p id="startText">選択なし</p>
+                <p style="font-size: 1.5em;">↓</p>
+                <p id="goalText">選択なし</p>
+                <button id="decideButton">ここに行く!</button>
+                <div class="switchArea">
+                    <input type="checkbox" id="switch1">
+                    <label for="switch1"><span></span></label>
+                    <div id="swImg"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- javascript -->
+    <script>
+        //現在地・目的地テキストの要素
+        const startText = document.getElementById("startText");
+        const goalText = document.getElementById("goalText");
+
+        //CSVファイルを読み込む関数
+        async function loadCSV(url) {
+            try {
+                const response = await fetch(url);
+                return await response.text();
+            } catch (error) {
+                console.log("エラー");
+            }
+        }
+
+        //セレクトに要素を追加する関数
+        function makeSelectOptiton(str) {
+            //値を格納する配列
+            const inter = [];
+            const art = [];
+            const info = [];
+
+            //テキストを列ごとに分割
+            const tmp = str.split(/\r\n|\n/);
+
+            //各列に対する処理
+            for(let i=0; i<tmp.length; i++) {
+                //列をコンマで分割
+                const optionDetail = tmp[i].split(",");
+                
+                //先頭が1の場合
+                if(optionDetail[0] == "1") {
+                    //名前とオブジェクト名
+                    const roomName = optionDetail[1];
+                    const buldingName = optionDetail[2];
+
+                    //オブジェクト名によって配列に名前を格納
+                    if(buldingName.includes("inter")) {
+                        inter.push(roomName);
+                    }else if(buldingName.includes("art")) {
+                        art.push(roomName);
+                    }else if(buldingName.includes("info")) {
+                        info.push(roomName);
+                    }
+                }
+            }
+
+            //それぞれの配列を返す
+            return {"select inter":inter, "select art":art, "select info":info};
+        }
+
+        //csvファイルの読み込み
+        const csvUrl = 'csv/node_detail.csv';
+        loadCSV(csvUrl)
+            .then(text => {
+                //セレクトエレメント
+                const selects = document.querySelectorAll(".select");
+
+                //それぞれのセレクトに対する処理
+                selects.forEach(select => {
+                    //セレクトイベント
+                    select.addEventListener("change", function() {
+                        //値を取り出す
+                        const idx = select.selectedIndex;
+                        const value = select.options[idx].value;
+
+                        //チェックボックスに応じて値を表示
+                        if(check.checked) {
+                            goalText.innerHTML = value;
+                        }else{
+                            startText.innerHTML = value;
+                        }
+                    }, false);
+
+                    //セレクトの値の配列
+                    const eachSelectOptionDict = makeSelectOptiton(text);
+                    const selectOption = eachSelectOptionDict[select.className];
+
+                    //セレクトに値を追加
+                    for (let option in selectOption) {
+                        const op = document.createElement("option");
+                        op.style.color = "black";
+                        op.text = selectOption[option];
+                        select.appendChild(op);
+                    }
+                });
+            })
+            //ファイルの読み込みエラー
+            .catch(error => console.log("エラー"));
+
+        //トップメニューに対する処理
+        const menus = document.querySelectorAll(".menu");
+        const inter = document.getElementById("inter");
+        const art = document.getElementById("art");
+        const info = document.getElementById("info");
+        menus.forEach(menu => {
+            //セレクトと説明のコンテナ要素
+            const containerSelect = document.getElementById("containerSelect");
+            const containerTop = document.getElementById("containerTop");
+
+            //セレクトと棟の名前の辞書
+            const selectElementDict = {"inter":inter, "art":art, "info":info};
+            const buldingNameDict = {"inter":"国際棟", "art":"芸術棟", "info":"情報棟"};
+
+            //それぞれのメニューに対する処理
+            if(!menu.className.includes("begin")) {
+                //メニュー(各棟)のクリックイベント
+                menu.addEventListener("click", function() {
+                    //それぞれのセレクトに対する処理
+                    for(let key in selectElementDict) {
+                        //セレクト要素
+                        const select = selectElementDict[key];
+
+                        //棟の名前の要素
+                        const name = document.getElementById("name");
+
+                        if(menu.className.includes(key)) {
+                            //現在処理しているメニューに対応するセレクト
+                            select.removeAttribute("disabled");
+                            select.style.zIndex = 2;
+                            name.innerHTML = buldingNameDict[key];
+                        }else{
+                            //それ以外のセレクト
+                            select.setAttribute("disabled", true);
+                            select.style.zIndex = 1;
+                        }
+
+                        //セレクトの値を初期化
+                        select.value = "選択なし";
+                    }
+
+                    //メニュー(各棟)のみを表示
+                    containerSelect.style.visibility = "visible";
+                    containerTop.style.visibility = "hidden";
+                }, false);
+            }else{
+                //メニュー(はじめに)のクリックイベント
+                menu.addEventListener("click", function() {
+                    //メニュー(はじめに)のみを表示
+                    containerSelect.style.visibility = "hidden";
+                    containerTop.style.visibility = "visible";
+                }, false);
+            }
+        });
+
+        //チェックボタン動作時イベント
+        const check = document.getElementById("switch1");
+        check.addEventListener("change", function() {
+            //セレクトの選択を初期化
+            inter.value = "選択なし";
+            art.value = "選択なし";
+            info.value = "選択なし";
+        }, false);
+
+        //決定ボタンイベント
+        const decideBtn = document.getElementById("decideButton");
+        decideBtn.addEventListener("click", function() {
+            //現在地と目的地の値
+            const key_goal = "goal";
+            const value_goal = goalText.textContent;
+            const key_start = "start";
+            const value_start = startText.textContent;
+
+            //現在地と目的地の値による処理
+            if(value_goal == "選択なし" || value_start == "選択なし") {
+                //どちらかが選択されていない場合
+                alert("※目的地または開始地点が選択されていません");
+            }else if(startText.textContent == goalText.textContent) {
+                //現在地と目的地が同じ場合
+                alert("※現在地と目的地が同じです");
+            }else{
+                //それ以外の場合
+
+                //セッションストレージに保存
+                sessionStorage.setItem(key_start, value_start);
+                sessionStorage.setItem(key_goal, value_goal);
+
+                //画面遷移
+                location.href = "map.html";
+            }
+        }, false);
+    </script>
+</body>
+</html>

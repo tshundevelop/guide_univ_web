@@ -1,0 +1,605 @@
+//======================================================================
+//経路探索クラス（ダイクストラ法）
+//======================================================================
+class Dijkstra {
+    constructor(graph) {
+        this.graph = graph;
+    }
+
+    //最短経路探索
+    findShortestPath(start, goal) {
+        //初期値
+        const distances = {};
+        const previousNodes = {};
+        const visited = {};
+        const queue = [];
+
+        //全てのノードの距離を無限にセット
+        for(const node in this.graph) {
+            distances[node] = Infinity;
+        }
+        distances[start] = 0;
+
+        queue.push({ node: start, distance: 0 });
+
+        //キューが空になるまで
+        while(queue.length > 0) {
+            //キューをソート
+            queue.sort((a, b) => a.distance - b.distance);
+
+            //現在のノード
+            const currentNode = queue.shift().node;
+
+            //経路が見つかった場合
+            if(currentNode === goal) {
+                return this.constructPath(previousNodes, goal, distances[goal]);
+            }
+
+            //現在のノードが探索済みならスキップ
+            if(visited[currentNode]) {
+                continue;
+            }
+            visited[currentNode] = true;
+
+            //現在のノードと隣接するノードの対して
+            for(const edge of this.graph[currentNode]) {
+                //隣接ノードの値
+                const neighbor = edge.node;
+                const weight = edge.weight;
+                const totalDistance = distances[currentNode] + weight;
+
+                //隣接ノードまでの距離がそれまでのものより短い場合
+                if(totalDistance < distances[neighbor]) {
+                    //隣接ノードの距離を更新
+                    distances[neighbor] = totalDistance;
+
+                    //経路を保存
+                    previousNodes[neighbor] = currentNode;
+
+                    //キューに追加
+                    queue.push({ node: neighbor, distance: totalDistance });
+                }
+            }
+        }
+
+        //経路が見つからなかった場合
+        return { distance: Infinity, path: [] };
+    }
+
+    //経路を形成
+    constructPath(previousNodes, current, distance) {
+        //経路を格納する配列
+        const path = [current];
+
+        //経路を逆順にたどる
+        while (previousNodes[current] !== undefined) {
+            current = previousNodes[current];
+            path.unshift(current);
+        }
+
+        //距離と経路を返す
+        return { distance, path };
+    }
+}
+
+//======================================================================
+//アニメーションクラス
+//======================================================================
+class Animetion {
+    constructor(path, nodePosition) {
+        //ノードと経路の情報
+        this.path = path;
+        this.nodePosition = nodePosition;
+        this.objectNameOfNode = {
+            "inter1":"講義棟1階",
+            "inter2":"講義棟2階",
+            "inter3":"講義棟3階",
+            "inter4":"講義棟4階",
+            "inter5":"講義棟5階",
+            "inter6":"講義棟6階",
+            "inter7":"講義棟7階",
+            "art2":"芸術棟2階",
+            "art3":"芸術棟3階",
+            "art4":"芸術棟4階",
+            "art5":"芸術棟5階",
+            "art6":"芸術棟6階",
+            "info2":"情報棟2階",
+            "info3":"情報棟3階",
+            "info4":"情報棟4階",
+            "info5":"情報棟5階",
+            "info6":"情報棟6階",
+            "info7":"情報棟7階",
+            "info8":"情報棟8階",
+            "reset":"現在地が表示されます"
+        };
+
+        //アニメーションと画像表示の要素
+        this.canvas = document.getElementById("Canvas");
+        this.image = document.getElementById("image");
+
+        //描写の準備
+        this.scene = new THREE.Scene();
+
+        //カメラの設定
+        this.camera = new THREE.PerspectiveCamera(45, (window.innerWidth*5/8)/window.innerHeight, 1, 10000);
+        this.camera.position.set(0, 200, 0);
+        this.camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+        //レンダラーの設定
+        this.renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            canvas: this.canvas
+        });
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.setSize(window.innerWidth*5/8, window.innerHeight);
+        this.renderer.setClearColor(0xaaaaaa);
+
+        //環境光源の設定
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        this.scene.add(this.ambientLight);
+
+        //並行光源の設定
+        this.directionalLight = new THREE.DirectionalLight(0xffffff);
+        this.directionalLight.intensity = 5;
+        this.directionalLight.position.set(0, 80, 100);
+        this.scene.add(this.directionalLight);
+
+        //glbローダー
+        this.gblLoader = new THREE.GLTFLoader();
+
+        //初期値
+        this.pathCount = 0;
+        this.scaleIncreasingTotal = 0;
+        this.model = undefined;
+        this.scaleAnimetionChangeFlag = true;
+        this.resetFlag = false;
+        this.stopFlag = false;
+        this.animetionFlag = false;
+
+        this.makeCube();//立方体作成
+        this.render();//レンダー
+    }
+
+    //アニメーションを開始する関数
+    start() {
+        this.animetion();
+    }
+
+    //アニメーションをリセットする関数
+    reset() {
+        if(this.animetionFlag) {
+            //アニメーション中
+            this.resetFlag = true;
+        }else{
+            //アニメーション停止中
+            this.resetDetail();
+        }
+    }
+
+    //アニメーションを停止する関数
+    stop() {
+        this.stopFlag = true;
+    }
+
+    //アニメーションを再開する関数
+    restart() {
+        this.stopFlag = false;
+        this.animetion();
+    }
+
+    //ファイルをロードする関数
+    async load(filename) {
+        //ファイル読み込み
+        const meterPerInch = 0.0254;
+        const gltf = await this.gblLoader.loadAsync(`glb/${filename}.glb`);
+        this.model = gltf.scene;
+
+        //スケールを合わせる
+        this.model.scale.set(1/meterPerInch, 25, 1/meterPerInch);
+
+        //シーンに追加
+        this.scene.add(this.model);
+        
+        //現在地の表示
+        this.displayCurrentPlace(filename);
+    }
+
+    //現在地を表示する関数
+    displayCurrentPlace(name) {
+        const currentPlace = document.getElementById("currentPlaceText");
+        currentPlace.innerHTML = this.objectNameOfNode[name];
+    }
+
+    //レンダーする関数
+    render() {
+        this.renderer.render(this.scene, this.camera);
+    }
+
+    //立方体を作成する関数
+    makeCube() {
+        //立方体を作成
+        const geometry = new THREE.BoxGeometry();
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const cube = new THREE.Mesh(geometry, material);
+
+        //立方体のスケールを設定
+        cube.scale.set(4, 4, 4);
+
+        //シーンに追加
+        this.scene.add(cube);
+    }
+
+    //ノードの情報を取得する関数
+    getNodeDetail(pathName, element) {
+        return this.nodePosition[pathName][element];
+    }
+
+    //変数を初期化する関数
+    resetDetail() {
+        //変数
+        this.pathCount = 0;
+        this.scaleIncreasingTotal = 0;
+        this.stopFlag = false;
+        this.scaleAnimetionChangeFlag = true;
+
+        //詳細表示
+        this.image.src = "image/image.png";
+        this.displayCurrentPlace("reset");
+
+        //スケール
+        this.scene.scale.set(1, 1, 1);
+
+        //オブジェクト削除
+        this.scene.remove(this.model);
+
+        //オブジェクト
+        this.model = undefined;
+
+        //レンダー
+        this.render();
+    }
+
+    //アニメーションを行う関数
+    async animetion() {
+        //初期値
+        const filename = 0;//ファイル名のインデックス
+        const xPosition = 1;//x座標のインデックス
+        const yPosition = 2;//y座標のインデックス
+        const currentNodeName = this.path[this.pathCount];//現在のノードの名前
+        const nextNodeName = this.path[this.pathCount+1];//次のノードの名前
+
+        //アニメーションアクティブ
+        this.animetionFlag = true;
+
+        if(this.pathCount < this.path.length-1) {
+            //現在のノードから次のノードへのアニメーション
+
+            //現在のノードの情報
+            const currentFilename = this.getNodeDetail(currentNodeName, filename);
+            const xCurrentPosition = this.getNodeDetail(currentNodeName, xPosition);
+            const yCurrentPosition = this.getNodeDetail(currentNodeName, yPosition);
+
+            //次のノードの情報
+            const nextFilename = this.getNodeDetail(nextNodeName, filename);
+            const xNextPosition = this.getNodeDetail(nextNodeName, xPosition);
+            const yNextPosition = this.getNodeDetail(nextNodeName, yPosition);
+
+            //初期描写
+            if(this.model == undefined) {
+                //ファイル読み込み
+                await this.load(currentFilename);
+
+                //オブジェクトの位置を設定
+                this.model.position.set(
+                    -xCurrentPosition,
+                    0,
+                    yCurrentPosition
+                );
+            }
+
+            if(currentFilename == nextFilename) {
+                //移動する２点のオブジェクトが同じファイルの場合
+
+                //ノード間の距離
+                const xDistanceBetweenTwoPoint = xNextPosition - xCurrentPosition;
+                const yDistanceBetweenTwoPoint = yNextPosition - yCurrentPosition;
+
+                //進行方向に合わせた画像表示
+                if(xDistanceBetweenTwoPoint <= yDistanceBetweenTwoPoint && -xDistanceBetweenTwoPoint <= yDistanceBetweenTwoPoint) {
+                    this.image.src = "image/foward.png";
+                }else if(xDistanceBetweenTwoPoint >= yDistanceBetweenTwoPoint && -xDistanceBetweenTwoPoint >= yDistanceBetweenTwoPoint) {
+                    this.image.src = "image/back.png";
+                }else if(xDistanceBetweenTwoPoint > yDistanceBetweenTwoPoint && -xDistanceBetweenTwoPoint < yDistanceBetweenTwoPoint) {
+                    this.image.src = "image/right.png";
+                }else if(xDistanceBetweenTwoPoint < yDistanceBetweenTwoPoint && -xDistanceBetweenTwoPoint > yDistanceBetweenTwoPoint) {
+                    this.image.src = "image/left.png";
+                }
+                
+                //1フレームの移動距離
+                const moveDistancePerFrame = 0.5;
+
+                //残りの距離(0以上)
+                const xRestDistance = Math.abs(xNextPosition + this.model.position.x);
+                const yRestDistance = Math.abs(yNextPosition - this.model.position.z);
+
+                if(xRestDistance > 0 || yRestDistance > 0) {
+                    //次のノードに着いていない場合
+
+                    //オブジェクトの移動
+                    if(xRestDistance > 0) {
+                        this.model.position.x -= Math.min(moveDistancePerFrame, xRestDistance) * Math.sign(xDistanceBetweenTwoPoint);
+                    }
+                    if(yRestDistance > 0) {
+                        this.model.position.z += Math.min(moveDistancePerFrame, yRestDistance) * Math.sign(yDistanceBetweenTwoPoint);
+                    }
+                }else{
+                    //次のノードに着いた場合
+                    this.pathCount += 1;
+                }
+            }else{
+                //移動する２点のオブジェクトが異なるファイル場合
+
+                //ノードがあるフロアを設定
+                const currentBuldingFloorNumber = parseInt(currentFilename.replace(/[^0-9]/g, ""));
+                const nextBuldingFloorNumber = parseInt(nextFilename.replace(/[^0-9]/g, ""))
+
+                if(currentBuldingFloorNumber == nextBuldingFloorNumber) {
+                    //２点のノードのフロアが同じ場合
+                    this.image.src = "image/move.png";
+                }else if(currentBuldingFloorNumber > nextBuldingFloorNumber) {
+                    //現在のノードのフロアが高い場合
+                    this.image.src = "image/stairdown.png";
+                }else if(currentBuldingFloorNumber < nextBuldingFloorNumber) {
+                    //次のノードのフロアが高い場合
+                    this.image.src = "image/stairup.png";
+                }
+
+                //スケールアニメーションのパラメータ設定
+                const scalePerFrame = 0.1;
+                const scaleOnChange = 15;
+
+                if(this.scaleIncreasingTotal < scaleOnChange) {
+                    //スケールが設定した範囲内の場合
+
+                    //スケールアニメーションを切り替える値
+                    const scaleSign = this.scaleAnimetionChangeFlag ? 1 : -1;
+
+                    //シーンのスケールを設定
+                    this.scene.scale.set(
+                        this.scene.scale.x + scalePerFrame * scaleSign,
+                        this.scene.scale.y + scalePerFrame * scaleSign,
+                        this.scene.scale.z + scalePerFrame * scaleSign
+                    );
+
+                    //スケールアニメーションの加算
+                    this.scaleIncreasingTotal += scalePerFrame;
+                }else if(this.scaleAnimetionChangeFlag){
+                    //スケールアニメーションの切り替え(一度だけ実行)
+
+                    //オブジェクトを削除
+                    this.scene.remove(this.model);
+
+                    //次のオブジェクトを読み込む
+                    await this.load(nextFilename);
+
+                    //オブジェクトの位置を設定
+                    this.model.position.set(
+                        -xNextPosition,
+                        0,
+                        yNextPosition
+                    );
+
+                    //スケールアニメーションのパラメータを初期化
+                    this.scaleAnimetionChangeFlag = false;
+                    this.scaleIncreasingTotal = 0;
+                }else{
+                    this.scaleAnimetionChangeFlag = true;
+                    this.scaleIncreasingTotal = 0;
+                    this.pathCount += 1;
+                }
+            }
+
+            if(this.resetFlag) {
+                //リセット判定
+                this.resetFlag = false;
+                this.resetDetail();
+            }else if(this.stopFlag) {
+                //停止判定
+                this.animetionFlag = false;
+            }else{
+                //描写とanimetion関数のコールバック
+                requestAnimationFrame(this.animetion.bind(this));
+                this.render();
+            }
+        }else{
+            //アニメーション終了
+
+            //停止ボタンを使用不可
+            const stopBtn = document.getElementById("stop");
+            stopBtn.setAttribute("disabled", true);
+            stopBtn.style.opacity = 0.5;
+
+            //アニメーションインアクティブ
+            this.animetionFlag = false;
+
+            //ゴールの画像表示
+            this.image.src = "image/finish.png";
+        }
+    }
+}
+
+//=======================================================================
+//メイン
+//=======================================================================
+
+//---CSVファイルを読み込む関数---
+async function loadCSV(url) {
+    try {
+        //読み込み
+        const response = await fetch(url);
+
+        //csvをテキストで返す
+        return response.text();
+    } catch (error) {
+        console("エラー");
+    }
+}
+
+//---ノード位置情報を辞書関数---
+function makeNodePositionDict(text) {
+    const nodePositionDict = {};
+    const tmp = text.split(/\r\n|\n/);//行をリスト化
+
+    //1行ごと
+    for(let i=0; i<tmp.length; i++) {
+        //行目と無記入行はスキップ
+        if(i != 0 && tmp[i] != "") {
+            const nodeDetail = tmp[i].split(",");
+            const nodeName = nodeDetail[1];//ノード名
+            const filename = nodeDetail[2];//ファイル名
+            const xPosition = nodeDetail[3]//x座標
+            const yPosition = nodeDetail[4];//y座標
+            nodePositionDict[nodeName] = [filename, Number(xPosition), Number(yPosition)];
+        }
+    }
+    return nodePositionDict
+}
+
+//---グラフ作成関数---
+function makeGraph(text) {
+    const graph = {};
+    const tmp = text.split(/\r\n|\n/);//行をリスト化
+
+    //1行ごと
+    for(let i=0; i<tmp.length; i++) {
+        //１行目と無記入行はスキップ
+        if(i != 0 && tmp[i] != "") {
+            const nodeDetail = tmp[i].split(",");
+            const nodeName = nodeDetail[1];//ノード名
+            const nextNodeList = [];//隣接ノードのリスト
+            //５列以降に対する処理
+            for(let n=5; n<nodeDetail.length; n++) {
+                if(nodeDetail[n] != "") {
+                    const nextNodeDetail = nodeDetail[n].split("_");
+                    const nextNodeName = nextNodeDetail[0];//隣接ノード名
+                    const nextNodeWeight = nextNodeDetail[1];//重み
+                    nextNodeList.push({node: nextNodeName, weight: Number(nextNodeWeight)});
+                }
+            }
+            graph[nodeName] = nextNodeList;
+        }
+    }
+
+    //グラフを返す
+    return graph;
+}
+
+//---ウィンドロード時実行---
+window.onload = () => {
+    //--- 開始点と目的地を表示---
+    const startNode = sessionStorage.getItem("start");//開始地点
+    const goalNode = sessionStorage.getItem("goal");//目的地
+    const pathText = document.getElementById("displayPathText");
+    pathText.innerHTML = startNode  + "<br>↓<br>" + goalNode;
+
+    //---ファイル読み込み、経路探索、describeインスタンス化---
+    let animetion = undefined;//describeインスタンス
+    const csvUrl = 'csv/node_detail.csv';
+    loadCSV(csvUrl)
+        .then(text => {
+            //ノード位置情報
+            const nodePositionDict = makeNodePositionDict(text);
+
+            //ノードのグラフ
+            const graph = makeGraph(text);
+
+            //経路探索
+            const dijkstra = new Dijkstra(graph);
+            const result = dijkstra.findShortestPath(startNode, goalNode);
+
+            //経路に基づいてアニメーション
+            animetion = new Animetion(result.path, nodePositionDict);
+
+            //経路が見つからないとき
+            if(result.path.length == 0) {
+                alert("経路が見つかりませんでした");
+            }else{
+                const startBtn = document.getElementById("start");
+                startBtn.removeAttribute("disabled");
+                startBtn.style.opacity = 1;
+            }
+        })
+        .catch(error => {
+            //ファイル読み込みエラー表示
+            console.log("ファイルの読み込みエラー")
+        });
+
+    //---開始ボタンイベント---
+    const startBtn = document.getElementById("start");
+    startBtn.addEventListener("click", function() {
+        //アニメーション開始
+        animetion.start();
+
+        //開始ボタン使用不可
+        startBtn.setAttribute("disabled", true);
+        startBtn.style.opacity = 0.5;
+
+        //リセットボタン使用可能
+        resetBtn.removeAttribute("disabled");
+        resetBtn.style.opacity = 1;
+
+        //停止ボタン使用可能
+        stopBtn.removeAttribute("disabled");
+        stopBtn.style.opacity = 1;
+    }, false);
+
+    //---リセットボタンイベント---
+    const resetBtn = document.getElementById("reset");
+    resetBtn.addEventListener("click", function() {
+        //アニメーションリセット
+        animetion.reset();
+
+        //開始ボタン使用可能
+        startBtn.removeAttribute("disabled");
+        startBtn.style.opacity = 1;
+
+        //リセットボタン使用不可
+        resetBtn.setAttribute("disabled", true);
+        resetBtn.style.opacity = 0.5;
+
+        //停止ボタン使用不可
+        stopBtn.setAttribute("disabled", true);
+        stopBtn.style.opacity = 0.5;
+        stopBtn.innerText = "一時停止";
+        stopFlag = false;
+    }, false);
+
+    //---一時停止・再開ボタンイベント---
+    let stopFlag = false;
+    const stopBtn = document.getElementById("stop");
+    stopBtn.addEventListener("click", function() {
+        stopFlag = !stopFlag;
+
+        if(stopFlag) {
+            //アニメーション停止
+            animetion.stop();
+            stopBtn.innerText = "再開";
+        }else{
+            //アニメーション再開
+            animetion.restart();
+            stopBtn.innerText = "一時停止";
+        }
+    }, false);
+
+    //---再選択ボタンイベント---
+    const selectBtn = document.getElementById("select");
+    selectBtn.addEventListener("click", function() {
+        //トップページに移動
+        location.href = "index.html";
+    }, false);
+
+    //---ウィンドリサイズイベント---
+    window.addEventListener("resize", function() {
+        this.location.href = "map.html";
+    });
+}
